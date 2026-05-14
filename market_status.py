@@ -1,0 +1,52 @@
+from datetime import datetime
+
+# Add market holidays here manually
+# Format: YYYY-MM-DD
+HOLIDAYS = {
+    "2026-01-01",
+    "2026-05-29",
+    "2026-10-24",
+}
+
+
+def get_market_status():
+    now = datetime.now()
+
+    current_date = now.strftime("%Y-%m-%d")
+
+    # Monday = 0
+    # Friday = 4
+    # Saturday = 5
+    # Sunday = 6
+
+    weekday = now.weekday()
+
+    # Market open days
+    market_days = [0, 1, 2, 3, 4]
+
+    # Check holiday
+    if current_date in HOLIDAYS:
+        return {
+            "status": "market close"
+        }
+
+    # Weekend check
+    if weekday not in market_days:
+        return {
+            "status": "market close"
+        }
+
+    # Market timing
+    current_minutes = now.hour * 60 + now.minute
+
+    market_open = 11 * 60
+    market_close = 15 * 60
+
+    if market_open <= current_minutes < market_close:
+        return {
+            "status": "market open"
+        }
+
+    return {
+        "status": "market close"
+    }
