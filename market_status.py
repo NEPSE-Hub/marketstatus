@@ -3,9 +3,7 @@ from datetime import datetime
 # Add market holidays here manually
 # Format: YYYY-MM-DD
 HOLIDAYS = {
-    "2026-01-01",
     "2026-05-29",
-    "2026-10-24",
 }
 
 
