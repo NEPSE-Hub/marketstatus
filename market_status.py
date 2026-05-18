@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # Add market holidays here manually
 # Format: YYYY-MM-DD
@@ -8,7 +8,9 @@ HOLIDAYS = {
 
 
 def get_market_status():
-    now = datetime.now()
+    # Nepal Standard Time (NPT) is UTC +5:45
+    npt_tz = timezone(timedelta(hours=5, minutes=45))
+    now = datetime.now(npt_tz)
 
     current_date = now.strftime("%Y-%m-%d")
 
