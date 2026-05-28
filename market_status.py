@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 # Add market holidays here manually
 # Format: YYYY-MM-DD
 HOLIDAYS = {
+    "2026-05-28",
     "2026-05-29",
 }
 
