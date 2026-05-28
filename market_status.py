@@ -8,46 +8,81 @@ HOLIDAYS = {
 }
 
 
+def get_last_trading_day(reference_date: datetime) -> datetime:
+    """Return the last trading day (previous market day) at 15:00 NPT."""
+    npt_tz = timezone(timedelta(hours=5, minutes=45))
+    one_day = timedelta(days=1)
+
+    current = reference_date.replace(hour=15, minute=0, second=0, microsecond=0)
+    # Ensure we don't count the reference date itself if it's a trading day but before close. For as_of after close, we want the same day's close? Actually no: if today is trading day
+    # and it's after 15:00, the last trading day is today. But user wants "last trading date and time" when market close after 15:00. That could be today at 15:00. But careful: if today is holiday/weekend,
+    # we need to go back. We'll implement general: find previous date that is a market day. Start from reference_date - 1 day.
+    check_date = reference_date - one_day
+    while True:
+        check_date_str = check_date.strftime("%Y-%m-%d")
+        weekday = check_date.weekday()
+        if weekday in [0,1,2,3,4] and check_date_str not in HOLIDAYS:
+            # Trading day found
+            return check_date.replace(hour=15, minute=0, second=0, microsecond=0)
+        check_date -= one_day
+
+
 def get_market_status():
     # Nepal Standard Time (NPT) is UTC +5:45
     npt_tz = timezone(timedelta(hours=5, minutes=45))
     now = datetime.now(npt_tz)
 
     current_date = now.strftime("%Y-%m-%d")
-
-    # Monday = 0
-    # Friday = 4
-    # Saturday = 5
-    # Sunday = 6
-
     weekday = now.weekday()
 
-    # Market open days
-    market_days = [0, 1, 2, 3, 4]
+    market_days = [0, 1, 2, 3, 4]  # Mon-Fri
 
-    # Check holiday
-    if current_date in HOLIDAYS:
-        return {
-            "status": "market close"
-        }
-
-    # Weekend check
-    if weekday not in market_days:
-        return {
-            "status": "market close"
-        }
-
-    # Market timing
+    # Helper to get current time in minutes
     current_minutes = now.hour * 60 + now.minute
 
-    market_open = 11 * 60
-    market_close = 15 * 60
+    # Define time slots
+    pre_open_start = 10 * 60 + 30      # 10:30
+    pre_open_special_end = 10 * 60 + 44  # 10:44:59
+    pre_open_matching_start = 10 * 60 + 45  # 10:45
+    pre_open_matching_end = 10 * 60 + 59  # 10:59:59
+    market_open_start = 11 * 60        # 11:00
+    market_open_end = 15 * 60 - 1      # 14:59:59
+    market_close_from = 15 * 60        # 15:00
 
-    if market_open <= current_minutes < market_close:
-        return {
-            "status": "market open"
-        }
+    # Determine status
+    status = None
+    is_open_session = False  # True for pre-open phases and open market
+
+    # Holiday or weekend -> closed all day
+    if current_date in HOLIDAYS or weekday not in market_days:
+        status = "market close"
+        is_open_session = False
+    else:
+        # Trading day logic
+        if current_minutes < pre_open_start:
+            status = "market close"
+            is_open_session = False
+        elif current_minutes <= pre_open_special_end:
+            status = "Pre-open/Special Pre-open"
+            is_open_session = True
+        elif current_minutes <= pre_open_matching_end:
+            status = "Pre-open matching"
+            is_open_session = True
+        elif current_minutes <= market_open_end:
+            status = "market open"
+            is_open_session = True
+        else:  # >= 15:00
+            status = "market close"
+            is_open_session = False
+
+    # Determine as_of
+    if is_open_session:
+        as_of = now  # current date and time
+    else:
+        # Market closed: get last trading day's close (15:00 NPT)
+        as_of = get_last_trading_day(now)
 
     return {
-        "status": "market close"
+        "status": status,
+        "as_of": as_of.strftime("%Y-%m-%d %H:%M:%S %Z")
     }
