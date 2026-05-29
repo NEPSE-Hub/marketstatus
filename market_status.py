@@ -26,7 +26,6 @@ def get_last_trading_day(reference_date: datetime) -> datetime:
             return check_date.replace(hour=15, minute=0, second=0, microsecond=0)
         check_date -= one_day
 
-
 def get_market_status():
     # Nepal Standard Time (NPT) is UTC +5:45
     npt_tz = timezone(timedelta(hours=5, minutes=45))
@@ -36,6 +35,13 @@ def get_market_status():
     weekday = now.weekday()
 
     market_days = [0, 1, 2, 3, 4]  # Mon-Fri
+
+    # NEW: Today status
+    today_status = (
+        "close"
+        if current_date in HOLIDAYS or weekday not in market_days
+        else "open"
+    )
 
     # Helper to get current time in minutes
     current_minutes = now.hour * 60 + now.minute
@@ -51,7 +57,7 @@ def get_market_status():
 
     # Determine status
     status = None
-    is_open_session = False  # True for pre-open phases and open market
+    is_open_session = False
 
     # Holiday or weekend -> closed all day
     if current_date in HOLIDAYS or weekday not in market_days:
@@ -71,18 +77,18 @@ def get_market_status():
         elif current_minutes <= market_open_end:
             status = "market open"
             is_open_session = True
-        else:  # >= 15:00
+        else:
             status = "market close"
             is_open_session = False
 
     # Determine as_of
     if is_open_session:
-        as_of = now  # current date and time
+        as_of = now
     else:
-        # Market closed: get last trading day's close (15:00 NPT)
         as_of = get_last_trading_day(now)
 
     return {
+        "today": today_status,   # NEW JSON RESPONSE
         "status": status,
         "as_of": as_of.strftime("%Y-%m-%d %H:%M:%S %Z")
     }
